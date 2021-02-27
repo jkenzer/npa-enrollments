@@ -4,7 +4,15 @@ var csv = require("fast-csv");
 const inputFile = "client-enrollments.csv";
 const npaData = [];
 const parsedData = new Map();
-const datePast = new Date(2017, 12, 31);
+let datePast;
+
+if (process.argv[2]) {
+  let [month, day, year] = process.argv[2].split("/");
+  datePast = new Date(year, month - 1, day);
+} else {
+  datePast = new Date(2017, 11, 31);
+}
+console.log(datePast);
 const activeStudents = [];
 const keepStudents = [];
 const archiveStudents = [];
@@ -23,15 +31,18 @@ const inputFilePromise = new Promise((resolve) => {
 Promise.all([inputFilePromise]).then(() => {
   npaData.forEach((row, index) => {
     const clientName = row["Client Name"].trim();
+
     if (parsedData.has(clientName)) {
       let currentStudent = parsedData.get(clientName);
       currentStudent.enrollments.push(row["Enrolled"]);
+
       if (!row["Terminated"]) {
         currentStudent["active"] = true;
       } else {
         let [month, day, year] = row["Terminated"].split(" ")[0].split("/");
         currentStudent.terminations.push(new Date(year, month - 1, day));
       }
+
       parsedData.set(clientName, currentStudent);
     } else {
       let currentStudent = {
@@ -50,41 +61,34 @@ Promise.all([inputFilePromise]).then(() => {
       parsedData.set(clientName, currentStudent);
     }
   });
-  let countOfActive = 0;
+
   for (let [key, value] of parsedData) {
+    let currentStudent = {
+      "Student Name": key,
+      Office: value.office,
+      "Client Status": value.clientStatus,
+      "Client Type": value.clientType
+    };
+
     if (value.active) {
-      countOfActive++;
-      activeStudents.push({
-        "Student Name": key,
-        Office: value.office,
-        "Client Status": value.clientStatus,
-        "Client Type": value.clientType
-      });
+      activeStudents.push(currentStudent);
     } else {
       value.terminations = value.terminations.sort((a, b) => b.date - a.date);
       let lastDate = value.terminations[value.terminations.length - 1];
-      if (lastDate < datePast) {
-        archiveStudents.push({
-          "Student Name": key,
-          Office: value.office,
-          "Client Status": value.clientStatus,
-          "Client Type": value.clientType
-        });
+
+      if (lastDate <= datePast) {
+        archiveStudents.push(currentStudent);
       } else {
-        keepStudents.push({
-          "Student Name": key,
-          Office: value.office,
-          "Client Status": value.clientStatus,
-          "Client Type": value.clientType
-        });
+        keepStudents.push(currentStudent);
       }
     }
   }
+
   console.log("Individual Students", parsedData.size);
   console.log(`Active students ${activeStudents.length}`);
   console.log(`Keep students ${keepStudents.length}`);
   console.log(`Archive students ${archiveStudents.length}`);
-  // console.table(archiveStudents);
+
   csv
     .writeToPath("activeStudents.csv", activeStudents, { headers: true })
     .on("error", (error) => console.error(error))
