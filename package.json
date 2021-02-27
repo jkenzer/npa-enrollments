@@ -1,0 +1,17 @@
+{
+  "name": "npa-enrollments",
+  "version": "1.0.0",
+  "description": "Parse the NPA enrollment csv and create unique instances of enrollments",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "NPA"
+  ],
+  "author": "Josh Kenzer",
+  "license": "MIT",
+  "dependencies": {
+    "fast-csv": "^4.3.6"
+  }
+}
